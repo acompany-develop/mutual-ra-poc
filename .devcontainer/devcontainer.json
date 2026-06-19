@@ -1,0 +1,9 @@
+{
+  "name": "mutual-attest-vtpm",
+  "build": { "dockerfile": "Dockerfile", "context": ".." },
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "remoteUser": "root",
+  "overrideCommand": true,
+  "postCreateCommand": "uv venv && uv pip install -r requirements.txt"
+}
