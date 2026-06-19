@@ -1,3 +1,10 @@
+# Transpiler output
+manifest.json
+node__*.py
+
+# System
+.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
