@@ -109,7 +109,7 @@ One swtpm is used per node, mirroring the real target where each node runs in it
 
 ## Historical Note
 
-Kleene's second recursion theorem was proved in Kleene (1938), and the idea behind its proof can be traced back to Gödel (1931). That such self-reference can be turned into a programming technique is itself well known; familiar examples include von Neumann's self-reproducing automata, Quine self-, and Curry's Y-combinator in the lambda calculus.
+Kleene's second recursion theorem was proved in Kleene (1938), and the idea behind its proof can be traced back to Gödel (1931). That such self-reference can be turned into a programming technique is itself well known; familiar examples include von Neumann's self-reproducing automata, Quine (self-reproducing program), and Curry's Y-combinator in the lambda calculus.
 
 ## Reference
 
@@ -123,4 +123,5 @@ Kleene's second recursion theorem was proved in Kleene (1938), and the idea behi
   DOI: [10.2307/2267778](https://doi.org/10.2307/2267778)
 - Kurt Gödel (1931), Über formal unentscheidbare Sätze der Principia Mathematica und verwandter Systeme I, *Monatsh. f. Mathematik und Physik*, Vol. 38, pp. 173–198.
   DOI: [10.1007/BF01700692](https://doi.org/10.1007/BF01700692)
+- John von Neumann, edited and completed by Arthur W. Burks (1966). *Theory of Self-Reproducing Automata*, University of Illinois Press, Urbana and London.
 - Haskell H. Curry, Robert Feys, William Craig (1958), *Combinatory Logic, Volume I*, North-Holland Publishing Company, Amsterdam.
