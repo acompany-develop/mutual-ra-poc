@@ -71,33 +71,36 @@ n1 (re)started -> swtpm:path=/tmp/tpm/n1.sock
 == run node 1 (listener, vTPM n0) in background ==
 [__NODE1] listening on 127.0.0.1:30303
 == run node 2 (connector, vTPM n1) ==
-[__NODE1] peer ref (self-computed): b2346a8f173808cb60b2c48cb7575729142dc66b99e40ba289fd8d1a631307a1
-[__NODE1] peer AK hash (received) : 6375711a73ab07823e3d03df4bdeb1b93c159d754c659eea6fe4212f6cb84cd0
-[__NODE2] peer ref (self-computed): 9b21fb62913f3a88fe6576ae2726107587ec153699e12ed3f3567a7a413497fa
-[__NODE1] PCR23 recalculated      : 521bb26fde896df7a8a6f225078b17c86803de031c030705277b57f5a0baf1da
-[__NODE1] PCR23 received          : 521bb26fde896df7a8a6f225078b17c86803de031c030705277b57f5a0baf1da
-[__NODE2] peer AK hash (received) : 5f247386712881395139b8a24c82458a13f7af3ca469e6e784a860aadafe18da
-[__NODE2] PCR23 recalculated      : 36ee7659bf57b35d305a8638ba7b1461e35f21af0a27a4202622ea8a1c280a3d
-[__NODE2] PCR23 received          : 36ee7659bf57b35d305a8638ba7b1461e35f21af0a27a4202622ea8a1c280a3d
-[__NODE1] peer __NODE2 : ATTESTATION VERIFIED
-[__NODE1] session key established: 0ea1c4fa4da98c01ace5bcac50a285b1...
+[__NODE2] peer ref (self-computed): f157596ccf71a445e6597c13bf3dee126b3aed31736f78912006b867918a095d
+[__NODE2] peer AK hash (received) : 5adf9ec933a61861c322b3ff79c81d0f8ca3bd63e57c7a9fbc0015614b8fdce6
+[__NODE2] PCR23 recalculated      : e625089412c07992243383a8537c6e129a679a49a87099329b935f6564365e64
+[__NODE1] peer ref (self-computed): 3a47ca3132596cda65be0d5d42e82bf08c3c0943c5166c89b870bbe37b94a805
+[__NODE2] PCR23 received          : e625089412c07992243383a8537c6e129a679a49a87099329b935f6564365e64
+[__NODE1] peer AK hash (received) : cbb8dbcf019b657d4b33d26ea1b5da779c57947c6ef2988691a119ecd9a0b9f3
+[__NODE1] PCR23 recalculated      : 204d9d6f796444580f4b8bc8282ba45c87bdfda89f3738a84fa2cbc0c54be2e8
+[__NODE1] PCR23 received          : 204d9d6f796444580f4b8bc8282ba45c87bdfda89f3738a84fa2cbc0c54be2e8
 [__NODE2] peer __NODE1 : ATTESTATION VERIFIED
-[__NODE2] session key established: 0ea1c4fa4da98c01ace5bcac50a285b1...
-[__NODE2] peer says: 'hello from __NODE1' (MAC ok)
+[__NODE2] session key established: 03ed4bb98e44d0f0dbc9dfe5cb4cb994...
+[__NODE1] peer __NODE2 : ATTESTATION VERIFIED
+[__NODE1] session key established: 03ed4bb98e44d0f0dbc9dfe5cb4cb994...
 [__NODE1] peer says: 'hello from __NODE2' (MAC ok)
+[__NODE2] peer says: 'hello from __NODE1' (MAC ok)
 == done ==
+```
+
+```console
 $ sha256sum *.py
-9b21fb62913f3a88fe6576ae2726107587ec153699e12ed3f3567a7a413497fa  node___NODE1.py
-b2346a8f173808cb60b2c48cb7575729142dc66b99e40ba289fd8d1a631307a1  node___NODE2.py
+f157596ccf71a445e6597c13bf3dee126b3aed31736f78912006b867918a095d  node___NODE1.py
+3a47ca3132596cda65be0d5d42e82bf08c3c0943c5166c89b870bbe37b94a805  node___NODE2.py
 ```
 
 ### Protocol
 
 1. Generate an ephemeral ECDH key and a 32-byte nonce; exchange them;
-2. In the vTPM: create an ECDSA AK, `PCR23 = reset(0)`, then `extend(sha256(own file))` and `extend(sha256(ephemeral_pubkey))`;
-3. `Quote(PCR23)` using the **peer's** nonce as qualifying data;
+2. In the vTPM: create an ECDSA AK, `PCR23 = reset(0)`, then `extend(sha256(own file))`;
+3. `Quote(PCR23)` using `sha256(own ephemeral_pubkey || peer's nonce)` as qualifying data;
 4. Exchange AK public key + PCR value + quote + signature;
-5. Verify the peer's quote: signature under the peer AK, `extraData == my nonce` (freshness), and `pcrDigest == sha256(expected_pcr)`, where `expected_pcr` is replayed from the reproduced peer's source code and the received ephemeral public key;
+5. Verify the peer's quote: signature under the peer AK, `extraData == sha256(peer's ephemeral_pubkey || my nonce)` (freshness + key binding), and `pcrDigest == sha256(expected_pcr)`, where `expected_pcr` is replayed from the reproduced peer's source code;
 6. on success, derive an ECDH + HKDF session key and exchange a MAC'd message.
 
 One swtpm is used per node, mirroring the real target where each node runs in its own VM with its own (v)TPM; both nodes use PCR23 on their own (v)TPM.
