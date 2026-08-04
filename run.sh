@@ -12,6 +12,7 @@ start_one() {
     local sock="${dir}.sock"
     pkill -f "path=${sock}" 2>/dev/null || true
     sleep 0.2
+    rm -rf "$dir"          # discard previous TPM state
     mkdir -p "$dir"
     rm -f "$sock" "${sock}.ctrl"
     swtpm socket --tpm2 \
