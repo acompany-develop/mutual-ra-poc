@@ -13,7 +13,7 @@ Under (2), embedding each node's reference measurement into the other is self-co
 
 This PoC avoids the infinite regress of (2) by embedding, in place of the reference measurement *value*, a function that *generates* it together with the data that function needs. Each node can then reconstruct the exact source of the other node from data carried within itself and hash it, so reference values are derived intrinsically rather than fetched from any external source (file, stdin, registry, ...). The construction is based on **Kleene's second recursion theorem**, and the mutual-reference transpilation is performed by [PyReflect](https://github.com/acompany-develop/PyReflect).
 
-This repository focuses on the swTPM-backed mutual attestation: two nodes carry out a TPM-based attestation, verify each other's reference values, and then complete a handshake.
+This repository demonstrates post-handshake mutual attestation backed by TPM. Two nodes performs TPM-backed mutual attestation after ECDH key exchange, including the verification of each other's reference values.
 
 ## Setup
 
@@ -61,7 +61,7 @@ pyreflect template.json .
 sha256sum *.py
 ```
 
-Expected:
+Example of a successful run (AK hashes and line interleaving vary):
 
 ```console
 $ ./run.sh
@@ -71,37 +71,42 @@ n1 (re)started -> swtpm:path=/tmp/tpm/n1.sock
 == run node 1 (listener, vTPM n0) in background ==
 [__NODE1] listening on 127.0.0.1:30303
 == run node 2 (connector, vTPM n1) ==
-[__NODE2] peer ref (self-computed): f157596ccf71a445e6597c13bf3dee126b3aed31736f78912006b867918a095d
-[__NODE2] peer AK hash (received) : 5adf9ec933a61861c322b3ff79c81d0f8ca3bd63e57c7a9fbc0015614b8fdce6
-[__NODE2] PCR23 recalculated      : e625089412c07992243383a8537c6e129a679a49a87099329b935f6564365e64
-[__NODE1] peer ref (self-computed): 3a47ca3132596cda65be0d5d42e82bf08c3c0943c5166c89b870bbe37b94a805
-[__NODE2] PCR23 received          : e625089412c07992243383a8537c6e129a679a49a87099329b935f6564365e64
-[__NODE1] peer AK hash (received) : cbb8dbcf019b657d4b33d26ea1b5da779c57947c6ef2988691a119ecd9a0b9f3
-[__NODE1] PCR23 recalculated      : 204d9d6f796444580f4b8bc8282ba45c87bdfda89f3738a84fa2cbc0c54be2e8
-[__NODE1] PCR23 received          : 204d9d6f796444580f4b8bc8282ba45c87bdfda89f3738a84fa2cbc0c54be2e8
+[__NODE1] peer ref (self-computed): 7e7ea367afd6edee8809ae280acce84d0e961dd84a3025bf3d0c28e4d35530a9
+[__NODE2] peer ref (self-computed): 429046816658738eb123f3e5a7e75fe108c927ac893ce207bd22bde48df9fe4a
+[__NODE2] peer AK hash (received) : <run-specific SHA-256>
+[__NODE1] peer AK hash (received) : <run-specific SHA-256>
+[__NODE2] PCR23 recalculated      : c592d713f803b97ef841d408d1da7d10c3c6f4756bc37759addba39afdb7bd6e
+[__NODE1] PCR23 recalculated      : db786d682714ebcd3da81cddb7ad5803f629e0687901a8ca02cc6c0d76ed833e
+[__NODE2] PCR23 received          : c592d713f803b97ef841d408d1da7d10c3c6f4756bc37759addba39afdb7bd6e
+[__NODE1] PCR23 received          : db786d682714ebcd3da81cddb7ad5803f629e0687901a8ca02cc6c0d76ed833e
 [__NODE2] peer __NODE1 : ATTESTATION VERIFIED
-[__NODE2] session key established: 03ed4bb98e44d0f0dbc9dfe5cb4cb994...
+[__NODE2] VK and SK established
 [__NODE1] peer __NODE2 : ATTESTATION VERIFIED
-[__NODE1] session key established: 03ed4bb98e44d0f0dbc9dfe5cb4cb994...
-[__NODE1] peer says: 'hello from __NODE2' (MAC ok)
-[__NODE2] peer says: 'hello from __NODE1' (MAC ok)
+[__NODE1] VK and SK established
+[__NODE1] peer says: 'hello from __NODE2' (AES-GCM authenticated)
+[__NODE2] peer says: 'hello from __NODE1' (AES-GCM authenticated)
 == done ==
 ```
 
 ```console
 $ sha256sum *.py
-f157596ccf71a445e6597c13bf3dee126b3aed31736f78912006b867918a095d  node___NODE1.py
-3a47ca3132596cda65be0d5d42e82bf08c3c0943c5166c89b870bbe37b94a805  node___NODE2.py
+429046816658738eb123f3e5a7e75fe108c927ac893ce207bd22bde48df9fe4a  node___NODE1.py
+7e7ea367afd6edee8809ae280acce84d0e961dd84a3025bf3d0c28e4d35530a9  node___NODE2.py
 ```
 
 ### Protocol
 
-1. Generate an ephemeral ECDH key and a 32-byte nonce; exchange them;
-2. In the vTPM: create an ECDSA AK, `PCR23 = reset(0)`, then `extend(sha256(own file))`;
-3. `Quote(PCR23)` using `sha256(own ephemeral_pubkey || peer's nonce)` as qualifying data;
-4. Exchange AK public key + PCR value + quote + signature;
-5. Verify the peer's quote: signature under the peer AK, `extraData == sha256(peer's ephemeral_pubkey || my nonce)` (freshness + key binding), and `pcrDigest == sha256(expected_pcr)`, where `expected_pcr` is replayed from the reproduced peer's source code;
-6. on success, derive an ECDH + HKDF session key and exchange a MAC'd message.
+1. Generate an ephemeral P-256 ECDH key and a 32-byte challenge nonce; exchange the nonce and the public key encoded as DER SubjectPublicKeyInfo;
+2. Validate the peer public key, calculate the ECDH shared secret `Z`, and derive two distinct 32-byte keys:
+   `VK = HMAC-SHA256(key=Z, data="VK")` and `SK = HMAC-SHA256(key=Z, data="SK")`;
+3. In the vTPM, create an ECDSA AK, set `PCR23 = reset(0)`, and then `extend(sha256(own file))`;
+4. For attester A responding to verifier B, call `Quote(PCR23)` with
+   `sha256(nonce_B || pub_A || pub_B || VK)` as qualifying data. The public-key values are the exact DER bytes exchanged in step 1;
+5. Exchange the AK public key, PCR value, quote, and signature;
+6. Verify the peer's quote: check the signature under the peer AK,
+   `extraData == sha256(my_nonce || peer_pubkey || own_pubkey || VK)`, and
+   `pcrDigest == sha256(expected_pcr)`, where `expected_pcr` is replayed from the reproduced peer source code;
+7. Only after successful verification, exchange messages encrypted and authenticated with AES-256-GCM under `SK`. Each message uses a fresh random 12-byte GCM nonce; the transmitted ciphertext includes the 16-byte GCM authentication tag.
 
 One swtpm is used per node, mirroring the real target where each node runs in its own VM with its own (v)TPM; both nodes use PCR23 on their own (v)TPM.
 
