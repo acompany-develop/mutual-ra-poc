@@ -1,3 +1,3 @@
-cryptography == 49.0.0
+cryptography == 50.0.0
 git+https://github.com/tpm2-software/tpm2-pytss@9d386fca1c6709cd89f5b42f05a7edc97fef7a9d
 git+https://github.com/acompany-develop/PyReflect@0bc40d46364dccd88cdadc0a0799d0cd411c0fe9
