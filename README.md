@@ -175,8 +175,8 @@ sequenceDiagram
     A ->> A: Hash its own on-disk source
     A ->> ATPM: Extend A's digest to PCR 23
     ATPM ->> ATPM: Extend PCR 23
-    A ->> ATPM: Read PCR 10
-    ATPM -->> A: PCR 10
+    A ->> ATPM: Read PCR 23
+    ATPM -->> A: PCR 23
     A ->> A: qualifyingData := SHA256(n_B||pub_A||pub_B||VK)
     A ->> ATPM: Get quote with qualifyingData
     ATPM ->> ATPM: Issue quote signed by AK
@@ -184,15 +184,15 @@ sequenceDiagram
   and
     Note over B, BTPM: Generate B's evidence
   end
-  A ->> B: A's AK pub, PCR 10,<br>quote, signature
-  B -->> A: B's AK pub, PCR 10,<br>quote, signature
+  A ->> B: A's AK pub, PCR 23,<br>quote, signature
+  B -->> A: B's AK pub, PCR 23,<br>quote, signature
 
   Note over A, B: Mutual Verification
   par
     A ->> A: Validate B's quote signature by AK
     A ->> A: Validate B's quote metadata
     A ->> A: Compare B's extraData<br>with SHA256(n_A||pub_B||pub_A||VK)
-    A ->> A: Compare B's PCR 10<br>with B's reference PCR 10<br>derived from B's reference value
+    A ->> A: Compare B's PCR 23<br>with B's reference PCR 23<br>derived from B's reference value
   and
     Note over B: Verify A's evidence
   end
